@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fetch = require('node-fetch')
 const RequestLog = require('./Models/RequestLog')
+const SerieSearch = require('./Models/SerieSearch')
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
@@ -13,7 +14,7 @@ app.use(cors());
 app.get('/', (req, res) => {
     res.status(200).send({ mensaje: "Funciona" })
 })
-
+app.set('trus proxy', true)
 //GET Serie
 
 app.get('/:serie', (req, res) => {
@@ -21,16 +22,43 @@ app.get('/:serie', (req, res) => {
         .then((res) => { return res.json() })
         .then((json) => {
             if (!json) {
-                res.status(404).send({ "Not Found": "404 Product Not Founded" })
+                return res.status(404).send({ "Not Found": "404 Product Not Founded" })
             } else {
-                res.status(200).send(json)
-                const newRequest = new RequestLog({
-                    date: new Date(),
-                    search: req.params.serie
+                SerieSearch.findOne({ name: json.name }).then((serieFinded) => {
+                    if (serieFinded) {
+                        res.status(200).send(serieFinded)
+                        const newRequest = new RequestLog({
+                            date: new Date(),
+                            search: req.params.serie,
+                            ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
+                            responseFrom:"CACHE"
+                        })
+                        newRequest.save().then((requestSaved) => {
+                            console.log(requestSaved)
+                        }).catch(err => { return console.log({ "Error": err }) })
+
+                    }else{
+                        res.status(200).send(json)
+                       const newSerie = new SerieSearch({
+                        name:json.name,
+                        image:{medium:json.image.medium},
+                        summary:json.summary,
+                        officialSite:json.officialSite
+                       })
+                       newSerie.save().then((serieSaved)=>{
+                           return console.log(serieSaved)
+                        }).catch(err=>{ return console.log({"Error guardando serie":err})})
+                        const newRequest = new RequestLog({
+                            date: new Date(),
+                            search: req.params.serie,
+                            ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
+                            responseFrom:"API"
+                        })
+                        newRequest.save().then((requestSaved) => {
+                            console.log(requestSaved)
+                        }).catch(err => { return console.log({ "Error": err }) })
+                    }
                 })
-                newRequest.save().then((requestSaved)=>{
-                    console.log(requestSaved)
-                }).catch(err=>{return console.log({"Error":err})})
             }
         }).catch(err => { res.status(500).send({ Error: err }) })
 })

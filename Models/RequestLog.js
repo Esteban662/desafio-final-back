@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 
 const requestSchema= new mongoose.Schema({
   date: String,
-  search: String
+  search: String,
+  ip:String,
+  responseFrom:String
 })
 
 
