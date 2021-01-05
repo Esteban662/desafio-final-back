@@ -18,49 +18,46 @@ app.set('trus proxy', true)
 //GET Serie
 
 app.get('/:serie', (req, res) => {
-    fetch(`http://api.tvmaze.com/singlesearch/shows?q=${req.params.serie}`)
-        .then((res) => { return res.json() })
-        .then((json) => {
-            if (!json) {
-                return res.status(404).send({ "Not Found": "404 Product Not Founded" })
-            } else {
-                SerieSearch.findOne({ name: json.name }).then((serieFinded) => {
-                    if (serieFinded) {
-                        res.status(200).send(serieFinded)
-                        const newRequest = new RequestLog({
-                            date: new Date(),
-                            search: req.params.serie,
-                            ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
-                            responseFrom:"CACHE"
-                        })
-                        newRequest.save().then((requestSaved) => {
-                            console.log(requestSaved)
-                        }).catch(err => { return console.log({ "Error": err }) })
 
-                    }else{
+    SerieSearch.findOne({name : req.params.serie})
+        .then((SerieFinded)=>{
+            if(SerieFinded){
+                res.status(200).send(SerieFinded)
+                const newRequest = new RequestLog({
+                    date: new Date(),
+                    search: req.params.serie,
+                    ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
+                    responseFrom: "CACHE"
+                })
+            }else{
+                fetch(`http://api.tvmaze.com/singlesearch/shows?q=${req.params.serie}`)
+                .then((res)=>{return res.json()})
+                .then((json)=>{
+                    if(!json){return res.status(404).send({"Not Founded":"404 Serie Not Founded"})}
+                    else{
                         res.status(200).send(json)
-                       const newSerie = new SerieSearch({
-                        name:json.name,
-                        image:{medium:json.image.medium},
-                        summary:json.summary,
-                        officialSite:json.officialSite
-                       })
-                       newSerie.save().then((serieSaved)=>{
-                           return console.log(serieSaved)
-                        }).catch(err=>{ return console.log({"Error guardando serie":err})})
-                        const newRequest = new RequestLog({
-                            date: new Date(),
-                            search: req.params.serie,
-                            ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
-                            responseFrom:"API"
-                        })
-                        newRequest.save().then((requestSaved) => {
-                            console.log(requestSaved)
-                        }).catch(err => { return console.log({ "Error": err }) })
+                        const newSerie = new SerieSearch({
+                            name:json.name,
+                            image:{medium:json.image.medium},
+                            summary:json.summary,
+                            officialSite:json.officialSite
+                           })
+                           newSerie.save().then((serieSaved)=>{
+                               return console.log(serieSaved)
+                            }).catch(err=>{ return console.log({"Error guardando serie":err})})
+                            const newRequest = new RequestLog({
+                                date: new Date(),
+                                search: req.params.serie,
+                                ip: req.header('x-forwarded-for') || req.connection.remoteAddress,
+                                responseFrom:"API"
+                            })
+                            newRequest.save().then((requestSaved) => {
+                                console.log(requestSaved)
+                            }).catch(err => { return console.log({ "Error": err }) })
                     }
                 })
             }
-        }).catch(err => { res.status(500).send({ Error: err }) })
+        })
 })
 
 mongoose.connect(connectionString, ((err) => {
